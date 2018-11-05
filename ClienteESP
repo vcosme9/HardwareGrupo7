@@ -1,0 +1,100 @@
+#include "WiFi.h"
+#include "AsyncUDP.h"
+#include <TimeLib.h>
+#include <ArduinoJson.h>
+
+
+const int EchoPin = 16;
+const int TriggerPin = 17;
+
+const char * ssid = "Grupo7";
+const char * password = "123456789";
+char texto[20];
+int hora;
+boolean rec=0;
+
+
+AsyncUDP udp;
+StaticJsonBuffer<200> jsonBuffer;
+JsonObject& envio = jsonBuffer.createObject();
+
+
+void setup() {
+  
+Serial.begin(9600);
+WiFi.mode(WIFI_STA);
+WiFi.begin(ssid, password);
+if (WiFi.waitForConnectResult() != WL_CONNECTED) {
+Serial.println("WiFi Failed"); 
+while(1) {
+delay(1000); 
+}
+
+}
+if(udp.listen(1234)) {
+Serial.print("UDP Listening on IP: "); 
+Serial.println(WiFi.localIP());
+udp.onPacket([](AsyncUDPPacket packet) {
+  
+
+int i=20;
+while (i--) {*(texto+i)=*(packet.data()+i);}
+rec=1;
+});
+
+}
+}
+
+void loop() {
+  Serial.print("hola");
+  char texto[200];
+  int altura = distancia(TriggerPin,EchoPin);
+  //altura = 20;
+  Serial.println(altura);
+//if (rec){
+//Send broadcast
+
+rec=0; //mensaje procesado
+envio["Altura"]=altura;
+udp.broadcastTo("Recibido",1234);
+envio.printTo(texto);
+udp.broadcastTo(texto,1234);
+//envia confirmacion 
+//y dato recibido
+hora=atol(texto);
+Serial.println (texto);
+Serial.println (hora);
+
+}
+
+int distancia(int TriggerPin, int EchoPin) {
+  
+long duracion;
+long distanciaCm;
+
+digitalWrite(TriggerPin, LOW); 
+
+//nos aseguramos señal baja al principio
+
+delayMicroseconds(4);
+
+digitalWrite(TriggerPin, HIGH); 
+
+//generamos pulso de 10us
+
+delayMicroseconds(10);
+
+digitalWrite(TriggerPin, LOW);
+
+duracion = pulseIn(EchoPin, HIGH); 
+ 
+//medimos el tiempo del pulso
+
+distanciaCm = duracion * 10 / 292 / 2; 
+
+ Serial.print(distanciaCm);
+ 
+//convertimos a distancia
+
+return distanciaCm;
+}
